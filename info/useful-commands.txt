@@ -1,0 +1,20 @@
+
+!build list
+
+[IC]
+!build IntegratedCircuit [use text characters for inputs/outputs]
+
+[MEMORY]
+!build massmemory
+!build massivememory
+
+[VISUAL]
+!build graph
+
+[INPUT]
+!build keyinput
+!build QwertyKeyInput
+
+[MISC]
+!build sign
+!build door

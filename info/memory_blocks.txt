@@ -1,0 +1,12 @@
+
+!build massmemory
+12-bit address
+8-bit value
+8-bit output
+1-bit write
+
+!build massivememory
+16-bit output
+12-bit address
+16-bit value
+1-bit write
