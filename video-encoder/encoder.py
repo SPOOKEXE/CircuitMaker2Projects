@@ -65,7 +65,7 @@ if __name__ == '__main__':
 
 	config = EncoderConfig(
 		GRID_SIZE = 16,
-		MAX_FRAMES = 800,
+		MAX_FRAMES = 900,
 		NTH_FRAME = 3,
 		MAX_CHARACTERS_PER_MEMORY = 200000, #pow(2, 12) * pow(2, 16) # 16 addresses * 16 bits
 	)

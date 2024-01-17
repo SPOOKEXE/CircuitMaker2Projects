@@ -1,0 +1,7 @@
+
+- 11-bit adder (12 bit output)
+- 16x16 LED grid
+- 16-bit memory
+
+- counting program
+- 4-sel mux

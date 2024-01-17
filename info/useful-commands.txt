@@ -1,5 +1,7 @@
 
+!help
 !build list
+!setspeed TICK_SPEED [changes the tick speed]
 
 [IC]
 !build IntegratedCircuit [use text characters for inputs/outputs]
