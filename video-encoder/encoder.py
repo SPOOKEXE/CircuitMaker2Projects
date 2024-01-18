@@ -163,8 +163,8 @@ def default_massmemory( FILEPATH : str ) -> None:
 
 if __name__ == '__main__':
 
-	# FILEPATH : str = 'video-encoder/flashing_1.mp4'
-	FILEPATH : str = 'video-encoder/badapple_compact.mp4'
+	FILEPATH : str = 'video-encoder/flashing_1.mp4'
+	# FILEPATH : str = 'video-encoder/badapple_compact.mp4'
 
 	# MASSIVE MEMORY
 	# default_massivememory( FILEPATH )
