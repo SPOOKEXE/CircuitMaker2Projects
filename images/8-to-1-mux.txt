@@ -1,0 +1,8 @@
+NS0 - 0246 - ACEG
+S0  - 1357 - BDFH
+
+NS1 - 0145 - ABDE
+S1  - 2367 - CDGH
+
+NS2 - 0123 - ABCD
+S2  - 4567 - EFGH
