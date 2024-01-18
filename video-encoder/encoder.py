@@ -1,176 +1,106 @@
 
-
-'''
-Utilizing '!build massivememory'
-
-Iterate top left to bottom right, row by row.
-Value is 0 or 1 which represents ON/OFF.
-'''
-
-'''
-TODO:
-fix the bugged math so ik how much room there is remaining
-'''
-
-import json
-import cv2
 import numpy as np
+import cv2
 
-from dataclasses import dataclass
 from PIL import Image
-from regex import P
 
-class BaseProcessor:
-	def preprocess( self, image : Image.Image ) -> Image.Image:
-		return image
+BS4 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
-class GrayscalePixelArtProcessor(BaseProcessor):
-	def __init__(self, size : int = 256 ):
-		self.SIZE = size
-	def preprocess( self, image : Image.Image ) -> list[int]:
-		image = image.convert('L')
-		image.thumbnail( (self.SIZE, self.SIZE), Image.BILINEAR )
-		nimage = Image.new('L', (self.SIZE, self.SIZE), 0)
-		nimage.paste( image, (0, 0) )
-		return [ v > 127 and 1 or 0 for v in np.array( nimage ).flatten() ]
+# 16-bit output
+def number_to_massivememory( number : int ) -> str:
+	d3 = number & 0b111111
+	d2 = (number & 0b111111_000000) >> 6
+	d1 = (number & 0b111111_000000_000000) >> 12
+	return BS4[d3] + BS4[d2] + BS4[d1]
 
-def extract_frames_from_video( filepath : str, max_frames : int = -1, processor : BaseProcessor = None ) -> list:
+def split_to_chunks( array : list, length : int, padd : bool = True ) -> list:
+	rem : int = len(array) % length
+	if rem != 0 and padd == True:
+		array.extend(['0']*rem)
+	return [ array[i:i+length] for i in range(0, len(array), length) ]
+
+def convert_to_grayscale_grid( image : Image.Image, grid : int = 16, bgc : int = 0, centered : bool = True ) -> Image.Image:
+	image = image.convert('L')
+	image.thumbnail( (grid, grid), Image.BILINEAR )
+	img : Image.Image = Image.new('L', (grid, grid), bgc)
+	img.paste( image, ( 8 - round( image.size[0] / 2 ), ( 8 - round( image.size[1] / 2 ) ) ) )
+	return img
+
+def grayscale_image_to_encoded_massivememory( image : Image.Image, output_bits : int = 16 ) -> str:
+	'''Returns a list of strings for each row of pixels in the image.
+	#### Assumes image is GRAYSCALE.'''
+	print('ENCODING NEW IMAGE')
+	encoded_image : list[str] = [ ]
+	for index, row in enumerate(np.array( image )):
+		print( index+1, row )
+		# pixels : list[int] = [ v > 127 and WHITE_COLOR or BLACK_COLOR for v in row ]
+		row = [ v > 127 and '1' or '0' for v in row ]
+		print( row )
+		row = int(''.join(row), 2)
+		print( row )
+		row = number_to_massivememory( row )
+		print( row )
+		encoded_image.append( row )
+	print('IMAGE HAS BEEN ENCODED')
+	return ''.join(encoded_image)
+
+def extract_frames_from_video( filepath : str, max_frames : int = -1 ) -> list:
 	frames : list[Image.Image] = []
 	capture = cv2.VideoCapture( filepath )
 	while True:
 		success, vframe = capture.read()
 		if success == False: break
 		frame : Image.Image = Image.fromarray( cv2.cvtColor(vframe, cv2.COLOR_BGR2RGB) )
-		if processor != None: frame = processor.preprocess( frame )
 		frames.append(frame)
 		if max_frames != -1 and len(frames) >= max_frames: break
 	capture.release()
 	return frames
 
-@dataclass
-class EncoderConfig:
-	GRID_SIZE : int
-	MAX_FRAMES : int
-	NTH_FRAME : int # every nth frame
-	MAX_CHARACTERS_PER_MEMORY : int # 2^n addresses * 2^n bits
+def encode_image_to_massivememory(
+	source_image : Image.Image,
+	GRID_SIZE : int = 16,
+	MAX_CHARACTERS_PER_MEMORY : int = 200000
+) -> str:
+	pixelated_image : Image.Image = convert_to_grayscale_grid( source_image, grid=GRID_SIZE, bgc=0, centered=True )
+	pixelated_image.save('video-encoder/pixelated.jpg')
 
-def encode_to_raw( video_filepath : str, config : EncoderConfig ) -> str:
-	processor : BaseProcessor = GrayscalePixelArtProcessor( size=config.GRID_SIZE )
-	print('Processing:', video_filepath)
-	frames : list[list[int]] = extract_frames_from_video( video_filepath, max_frames=config.MAX_FRAMES, processor=processor )
-	frames : list[list[int]] = frames[ 0::config.NTH_FRAME ]
-	print('Gathered frames.')
-	return str( np.array(frames).flatten().tolist() ).replace(' ', '').replace(',', '')[1:-1]
+	memory : str = grayscale_image_to_encoded_massivememory( pixelated_image )
+	padding : str = 'A' * ( MAX_CHARACTERS_PER_MEMORY - len(memory) - memory.count('\n') )
+	return memory + padding
 
-BS4 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-def number_to_massivememory( number ) -> str:
-	d3 = number & 0b111111
-	d2 = (number & 0b111111_000000) >> 6
-	d1 = (number & 0b111_000000_000000) >> 12
-	return BS4[d3] + BS4[d2] + BS4[d1]
+def encode_video_to_massivememory(
+	video_filepath : str,
+	GRID_SIZE : int = 16,
+	MAX_FRAMES : int = 1500,
+	NTH_FRAME : int = 3,
+	MAX_CHARACTERS_PER_MEMORY : int = 200000
+) -> str:
+	DEFAULT_SUFFIX = 'th'
+	CUSTOM_SUFFIX = { '2' : 'nd', '3' : 'rd' }
 
-def encode_to_massivememory( video_filepath : str, config : EncoderConfig ) -> str:
-	processor : BaseProcessor = GrayscalePixelArtProcessor( size=config.GRID_SIZE )
-	print('Processing:', video_filepath)
-	frames : list[list[int]] = extract_frames_from_video( video_filepath, max_frames=config.MAX_FRAMES, processor=processor )
-	frames : list[list[int]] = frames[ 0::config.NTH_FRAME ]
+	print('Extracting Frames:', video_filepath)
+	frames : list[Image.Image] = extract_frames_from_video( video_filepath, max_frames=MAX_FRAMES )
 
-	print('Encoding frames.')
-	mm : list = []
-	for frame in frames:
-		new_row : list = [ ]
-		for index in frame[0::config.GRID_SIZE]:
-			value = frame[index*config.GRID_SIZE:(index+1)*config.GRID_SIZE]
-			num = int("".join([ str(v) for v in value ]), 2)
-			encoded = number_to_massivememory( num )
-			new_row.append( encoded )
-		# new_row.reverse()
-		mm.extend(new_row)
-	value : str = "".join(mm)
-	padd_amnt : int = config.MAX_CHARACTERS_PER_MEMORY - len(value)
-	print(f'Padding an additional {padd_amnt} values.')
-	return value + ("A" * padd_amnt)
+	print(f'Gathering every { NTH_FRAME }{ CUSTOM_SUFFIX.get(str(NTH_FRAME)) or DEFAULT_SUFFIX } frame.')
+	frames : list[Image.Image] = frames[ 0::NTH_FRAME ]
 
-def split_to_chunks( array : list, length : int ) -> list:
-	return [ array[i:i+length] for i in range(0, len(array), length) ]
+	print(f'Grayscaling and downscaling frames.')
+	frames : list[Image.Image] = [ convert_to_grayscale_grid( img, grid=GRID_SIZE, bgc=0, centered=True ) for img in frames ]
 
-HEX_MAPPED = {
-	'0000' : '0', '0001' : '1',
-	'0010' : '2', '0011' : '3',
-	'0100' : '4', '0101' : '5',
-	'0110' : '6', '0111' : '7',
-	'1000' : '8', '1001' : '9',
-	'1010' : 'A', '1011' : 'B',
-	'1100' : 'C', '1101' : 'D',
-	'1110' : 'E', '1111' : 'F'
-}
+	print(f'Encoding frames.')
+	encoded_frames : list[str] = [ grayscale_image_to_encoded_massivememory(img) for img in frames ]
 
-def strhex( value : str ) -> str:
-	return HEX_MAPPED.get(value)
+	print(f'Concatenating frames.')
+	memory : str = ''.join( encoded_frames )
+	padding : str = 'A' * ( MAX_CHARACTERS_PER_MEMORY - len(memory) - memory.count('\n') )
 
-def encode_to_massmemory( video_filepath : str, config : EncoderConfig ) -> str:
-	processor : BaseProcessor = GrayscalePixelArtProcessor( size=config.GRID_SIZE )
-	print('Processing:', video_filepath)
-	frames : list[list[int]] = extract_frames_from_video( video_filepath, max_frames=config.MAX_FRAMES, processor=processor )
-	frames : list[list[int]] = frames[ 0::config.NTH_FRAME ]
-
-	encoded_frames : list = [ ]
-	for index, row in enumerate(frames):
-		print(index, 'FRAME NUMBER')
-		print(row)
-		pixels : str = ''.join([str(x) for x in row])
-		print(pixels)
-		splits : list[str] = split_to_chunks( pixels, 4 )
-		print(splits)
-		encoded : list[str] = [ strhex( chunk ) for chunk in splits ]
-		print(encoded)
-		encoded_frames.append( ''.join(encoded) )
-
-	with open('video-encoder/frames.txt', 'w') as file:
-		file.write( json.dumps( encoded_frames, indent=4 ) )
-
-	value : str = "".join([ "".join(a) for a in encoded_frames ])
-	padd_amnt : int = config.MAX_CHARACTERS_PER_MEMORY - len(value)
-	print(f'Padding an additional {padd_amnt} values.')
-	return value + ('0' * padd_amnt)
-
-def default_massivememory( FILEPATH : str ) -> None:
-
-	config = EncoderConfig(
-		GRID_SIZE = 16,
-		MAX_FRAMES = 900,
-		NTH_FRAME = 3,
-		MAX_CHARACTERS_PER_MEMORY = 200000, #pow(2, 12) * pow(2, 16) # 16 addresses * 16 bits
-	)
-
-	data : str = encode_to_massivememory( FILEPATH, config )
-	print('Data is encoded: ', len(data))
-	with open(f'video-encoder/0_memory.txt', 'w') as file:
-		file.write( data )
-
-def default_massmemory( FILEPATH : str ) -> None:
-	config = EncoderConfig(
-		GRID_SIZE = 8,
-		MAX_FRAMES = 1200,
-		NTH_FRAME = 3,
-		MAX_CHARACTERS_PER_MEMORY = 200000,
-	)
-
-	data : str = encode_to_massmemory( FILEPATH, config )
-	print('Data is encoded: ', len(data))
-	with open(f'video-encoder/1_memory.txt', 'w') as file:
-		file.write( data )
+	print(f'Completed process.')
+	return memory + padding
 
 if __name__ == '__main__':
 
-	FILEPATH : str = 'video-encoder/flashing_1.mp4'
-	# FILEPATH : str = 'video-encoder/badapple_compact.mp4'
-
-	# MASSIVE MEMORY
-	# default_massivememory( FILEPATH )
-
-	# MASS MEMORY
-	default_massmemory( FILEPATH )
-
-	# with open('video-encoder/white.txt', 'w') as file:
-	# 	file.write( 'FFFFFFFFFFFFFFFF0000000000000000' * 62 )
+	# video_filepath : str = 'video-encoder/flashing_1.mp4'
+	video_filepath : str = 'video-encoder/badapple_compact.mp4'
+	encoded_video : str = encode_video_to_massivememory( video_filepath, NTH_FRAME=10 )
+	with open('video-encoder/0_memory.txt', 'w') as file:
+		file.write( encoded_video )
