@@ -11,19 +11,19 @@ MassiveMemory Output:
 from typing import Callable
 
 OPCODES : dict[str, int] = {
-	'NULL'	:	'0000',
-	'NULL'	:	'0001',
-	'READ'	:	'0010',
-	'WRITE'	:	'0011',
-	'COPY'	:	'0100',
-	'NULL'	:	'0101',
+	'RESET' :	'0000',
+	'READ'	:	'0001',
+	'WRITE'	:	'0010',
+	'COPY'	:	'0011',
+	'FLUSH'	:	'0100',
+	'ECHO'	:	'0101',
 	'NULL'	:	'0110',
-	'FLUSH'	:	'0111',
-	'ECHO'	:	'1000',
-	'NULL'	:	'1001',
+	'NULL'	:	'0111',
+	'ADD'	:	'1000',
+	'SUB'	:	'1001',
 	'NULL'	:	'1010',
-	'ADD'	:	'1011',
-	'SUB'	:	'1100',
+	'NULL'	:	'1011',
+	'NULL'	:	'1100',
 	'NULL'	:	'1101',
 	'NULL'	:	'1110',
 	'NULL'	:	'1111',
@@ -73,7 +73,7 @@ def preprocess( content : str ) -> list[str]:
 	lines : list[str] = []
 	for line in content.split('\n'):
 		if line.strip() == '': continue # ignore empty lines
-		if line.find('>'): line = line[:line.find('>')] # remove comments
+		if line.find('>>') != -1: line = line[:line.find('>>')] # remove comments
 		line = line.replace('\n', '') # remove newlines
 		lines.append( line ) # finished preprocessing line
 	return lines
@@ -127,10 +127,12 @@ def to_binary_format( value : int, BIT_SIZE : int ) -> str:
 	return format(value, f'#0{BIT_SIZE+2}b')[2:]
 
 def compile_instruction( index : int, line : str ) -> list[str]:
-
+	print(line)
 	instruction, args = Validators.OPCODE_INSTRUCTION( index, line )
 	print( instruction, args )
-	if instruction == 'READ':
+	if instruction == 'RESET':
+		return [ f"{OPCODES['RESET']} 000000 000000" ]
+	elif instruction == 'READ':
 		Validators.MEMORY_ADDRESS( index, args[0] )
 		addr0 : str = to_binary_format( int(args[0][1:]), MAX_ADDRESS_BIT_SIZE )
 		return [ f"{OPCODES['READ']} {addr0} 000100" ]
@@ -155,10 +157,10 @@ def compile_instruction( index : int, line : str ) -> list[str]:
 		addr1 : str = to_binary_format( int(args[1][1:]), MAX_ADDRESS_BIT_SIZE )
 		return [ f"{OPCODES['COPY']} {addr0} {addr1}" ]
 	elif instruction == 'FLUSH':
-		return [ f"{OPCODES['FLUSH']}" ]
+		return [ f"{OPCODES['FLUSH']} 000000 000000" ]
 	elif instruction == 'ECHO':
 		addr0 : str = to_binary_format( int(args[0][1:]), MAX_ADDRESS_BIT_SIZE )
-		return [ f"{OPCODES['ECHO']} {addr0} 000000" ]
+		return [ f"{OPCODES['FLUSH']} 000000 000000", f"{OPCODES['ECHO']} {addr0} 000000" ]
 	elif instruction == 'ADD':
 		Validators.MEMORY_ADDRESS( index, args[0] )
 		Validators.MEMORY_ADDRESS( index, args[1] )
@@ -188,7 +190,7 @@ def compile_instruction( index : int, line : str ) -> list[str]:
 	raise ValueError(f'Instruction {instruction} on line {index} is currently not supported in compiling!')
 
 def compile( content : str ) -> str:
-	machine : list[str] = ['12ADDR/16VAL BITS COMPUTER PROGRAM']
+	machine : list[str] = []
 	lines : list[str] = preprocess( content )
 	for index, line in enumerate(lines):
 		translated : list[str] = compile_instruction( index, line )
@@ -228,6 +230,7 @@ if __name__ == '__main__':
 	# print(Validators.NUMBER_VALUE('6'))
 
 	assembly = compile('''
+	RESET			>> reset the memory/registers
 	WRITE $8 4		>> write 4 to ADDRESS 8
 	WRITE $9 4		>> write 4 to ADDRESS 9
 	ADD $8 $9 $10	>> add ADDR-8 and ADDR-9 and write to ADDR-10
@@ -235,20 +238,22 @@ if __name__ == '__main__':
 	''')
 	print(assembly)
 
-	memory = memory_code( assembly[assembly.find('\n')+1:], padding=False )
-	print(memory[:memory.find('AAAAAAA')])
+	memory = memory_code( assembly, padding=False )
+	print(memory[:100])
 
 	# == BINARY CODE ==
-	# 0011 001000 000100
-	# 0011 001001 000100
-	# 0100 001000 000000
-	# 0100 001001 000001
-	# 1011 000000 000000
-	# 0100 000010 001010
-	# 1000 001010 000000
+	# 0000 000000 000000
+	# 0010 001000 000100
+	# 0010 001001 000100
+	# 0011 001000 000000
+	# 0011 001001 000001
+	# 1000 000000 000000
+	# 0011 000010 001010
+	# 0100 000000 000000
+	# 0101 001010 000000
 
 	# == MASSIVE MEMORY ENCODED ==
-	# EIDEJDAIEBJEAALKCEAKI
+	# EICEJCAIDBJDAAIKCDAAEAKF
 
 	with open( 'computer/assembly_memory.txt', 'w' ) as file:
 		file.write( memory )

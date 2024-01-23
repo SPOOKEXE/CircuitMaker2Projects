@@ -28,29 +28,28 @@ RESERVED ADDRESSES (cannot write to):
 001000+ : FREE
 
 INSTRUCTIONS (4-bit):
-1.
-2.
-3.
-4.
-5. WRITE [ADDRESS] [NUMBER]
-6. COPY [ADDRESS] [ADDRESS]
-7.
-8.
-9. FLUSH
-10. ECHO [ADDRESS]
-11.
-12. ADD [ADDRESS] [ADDRESS]
-13. SUB [ADDRESS] [ADDRESS]
-14.
-15.
-16.
+
+- READ [ADDRESS]
+- WRITE [ADDRESS] [NUMBER]
+- COPY [ADDRESS] [ADDRESS]
+- FLUSH
+- ECHO [ADDRESS]
+- ADD [ADDRESS] [ADDRESS]
+- SUB [ADDRESS] [ADDRESS]
+
+TODOS:
+- LESS-THAN
+- GREATER-THAN
+- JUMP-IF-ZERO [ADDRESS]
+- JUMP-IF-NOT-ZERO [ADDRESS]
+- NOP
 
 =================================================
 
 * numbers can be in binary or decimal, it will be converted.
 
 {ASM HIGH-LEVEL}
-WRITE $8 000000000100	>> write 4 to ADDRESS 8
+WRITE $8 4	>> write 4 to ADDRESS 8
 WRITE $9 000000000100	>> write 4 to ADDRESS 9
 ADD $8 $9 $10 			>> add ADDR-8 and ADDR-9 and write to ADDR-10
 ECHO $10				>> outputs result (8)
