@@ -1,0 +1,71 @@
+
+16-bit Calculator Project
+
+=================================================
+
+4-bit instruction/op-code
+12-bit address
+
+- Add/Subtract/Divide/Multiply Processing Unit
+- Arithmetic Logic Unit
+- Cache Registers
+- DIY RAM Encoder/Decoder
+- Control Logic
+- Bus Controller
+
+=================================================
+
+RESERVED ADDRESSES (cannot write to):
+000000 : R0
+000001 : R1
+000010 : R2
+000010 : READ
+000011 : SYS
+000100 : SYS
+000101 : SYS
+000110 : SYS
+000111 : SYS
+001000+ : FREE
+
+INSTRUCTIONS (4-bit):
+1.
+2.
+3.
+4.
+5. WRITE [ADDRESS] [NUMBER]
+6. COPY [ADDRESS] [ADDRESS]
+7.
+8.
+9. FLUSH
+10. ECHO [ADDRESS]
+11.
+12. ADD [ADDRESS] [ADDRESS]
+13. SUB [ADDRESS] [ADDRESS]
+14.
+15.
+16.
+
+=================================================
+
+* numbers can be in binary or decimal, it will be converted.
+
+{ASM HIGH-LEVEL}
+WRITE $8 000000000100	>> write 4 to ADDRESS 8
+WRITE $9 000000000100	>> write 4 to ADDRESS 9
+ADD $8 $9 $10 			>> add ADDR-8 and ADDR-9 and write to ADDR-10
+ECHO $10				>> outputs result (8)
+
+{ASM LOW-LEVEL}
+WRITE $8 000000000100	>> write 4 to ADDRESS 8
+WRITE $9 000000000100	>> write 4 to ADDRESS 9
+COPY $8 R0		>> copy ADDR-8 and write to @R0
+COPY $9 R1		>> copy ADDR-9 and write to @R1
+ADD R0 R1 R2	>> add R0 and R1 and store in R2
+COPY R2 $10 	>> copy @R2 and write to ADDR-10
+FLUSH			>> reset the output values
+ECHO $10		>> output ADDR-10
+
+{ADDITION MACHINE-LEVEL}
+
+
+=================================================

@@ -1,7 +1,0 @@
-- Add/Subtract/Divide/Multiply Processing Unit
-- Arithmetic Logic Unit
-- Cache Registers
-- DIY RAM Encoder/Decoder
-- Control Logic
-- Bus Controller
-- 4/8bit Computer
