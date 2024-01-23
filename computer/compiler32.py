@@ -1,4 +1,13 @@
 
+
+'''
+MassiveMemory Output:
+4 LEFT BITS : OPCODE INSTRUCTION
+6 CENTER BITS : VALUE/ADDRESS/NONE
+6 RIGHT BITS : VALUE/ADDRESS/NONE
+'''
+
+
 from typing import Callable
 
 OPCODES : dict[str, int] = {
@@ -37,10 +46,10 @@ MACROS_ARGS_LENGTH : dict[str, int] = {
 	# 'MACRO' : 3,
 }
 
-MAX_VALUE_BIT_SIZE : int = 16
+MAX_VALUE_BIT_SIZE : int = 6
 MAX_ADDRESS_BIT_SIZE : int = 6
 
-MIN_MEMORY_ADDRESS : int = 7
+MIN_MEMORY_ADDRESS : int = 5
 MAX_MEMORY_ADDRESS : int = pow(2, MAX_ADDRESS_BIT_SIZE-1)
 
 class CompilerErrors:
@@ -49,6 +58,7 @@ class CompilerErrors:
 	MEMORY_ADDRESS_INVALID = 'A memory reference was not passed in on line {}!'
 	MEMORY_ADDRESS_OUT_OF_RANGE = 'The memory address on line {} is out of range! Got {} when max address is 63 and minimum is 7.'
 	NOT_A_NUMBER = 'The passed value on line {} is not a number!'
+	NUMBER_OUT_OF_RANGE = 'The passed number on line {} is too large for the bit size!'
 
 def expand_macro( args : list[str] ) -> list[str]:
 	macro : str = args.pop(0)
@@ -74,18 +84,21 @@ class Validators:
 		'''
 		0 = MEMORY ADDRESS
 		1 = NOT A NUMBER
-		2 = BINARY
-		3 = DECIMAL
+		2 = OVER/UNDER BIT SIZE LIMIT
+		3 = BINARY
+		4 = DECIMAL
 		'''
 		if '$' in value:
 			return 0
 		try:
 			if value.find('0b') == -1:
-				int( value, base=10 )
-				return 3
+				value = int( value, base=10 )
+				if value > pow(2, MAX_VALUE_BIT_SIZE): return 2
+				return 4
 			else:
-				int( value, base=2 )
-				return 2
+				value = int( value, base=2 )
+				if value > pow(2, MAX_VALUE_BIT_SIZE): return 2
+				return 3
 		except Exception as exception:
 			print( exception )
 			return 1
@@ -94,10 +107,8 @@ class Validators:
 		if not '$' in value:
 			raise ValueError( CompilerErrors.MEMORY_ADDRESS_INVALID.format(index) )
 		try:
-			if str( value[1:] ).find('0b') == -1:
-				address_n : int = int( value[1:], base=10 )
-			else:
-				address_n : int = int( value[1:], base=2 )
+			if str( value[1:] ).find('0b') == -1: address_n : int = int( value[1:], base=10 )
+			else: address_n : int = int( value[1:], base=2 )
 		except:
 			raise ValueError( CompilerErrors.MEMORY_ADDRESS_INVALID.format(index) )
 		if is_write and (address_n > MAX_MEMORY_ADDRESS or address_n < MIN_MEMORY_ADDRESS):
@@ -107,11 +118,9 @@ class Validators:
 		splits : list[str] = line.split(' ')
 		instruction : str = splits.pop(0)
 		opcode : str = OPCODES.get( instruction )
-		if opcode == None:
-			raise ValueError( CompilerErrors.INSTRUCTION_NOT_VALID.format(instruction, index) )
+		if opcode == None: raise ValueError( CompilerErrors.INSTRUCTION_NOT_VALID.format(instruction, index) )
 		arglen : int = OPCODE_ARGS_LENGTH.get(instruction) or 0
-		if len(splits) != arglen:
-			raise ValueError( CompilerErrors.INSTRUCTION_ARGS_LENGTH.format(instruction, index) )
+		if len(splits) != arglen: raise ValueError( CompilerErrors.INSTRUCTION_ARGS_LENGTH.format(instruction, index) )
 		return instruction, splits
 
 def to_binary_format( value : int, BIT_SIZE : int ) -> str:
@@ -130,10 +139,14 @@ def compile_instruction( index : int, line : str ) -> list[str]:
 		numtype : int = Validators.NUMBER_VALUE( args[1] )
 		if numtype == 0 or numtype == 1: # memory address or not-a-number
 			raise ValueError( CompilerErrors.NOT_A_NUMBER.format(index) )
+		if numtype == 2:
+			raise ValueError( CompilerErrors.NUMBER_OUT_OF_RANGE.format(index) )
 		address : str = to_binary_format( int(args[0][1:]), MAX_ADDRESS_BIT_SIZE )
 		value : int = 0
-		if numtype == 2: value = args[1] # binary
-		elif numtype == 3: value = to_binary_format( int(args[1]), MAX_VALUE_BIT_SIZE ) # decimal
+		if numtype == 3:
+			value = to_binary_format( args[1], MAX_VALUE_BIT_SIZE ) # binary
+		elif numtype == 4:
+			value = to_binary_format( int(args[1]), MAX_VALUE_BIT_SIZE ) # decimal
 		return [ f"{ OPCODES['WRITE'] } { address } { value }" ]
 	elif instruction == 'COPY':
 		Validators.MEMORY_ADDRESS( index, args[0] )
@@ -145,18 +158,19 @@ def compile_instruction( index : int, line : str ) -> list[str]:
 		return [ f"{OPCODES['FLUSH']}" ]
 	elif instruction == 'ECHO':
 		addr0 : str = to_binary_format( int(args[0][1:]), MAX_ADDRESS_BIT_SIZE )
-		return [ f"{OPCODES['ECHO']} {addr0}" ]
+		return [ f"{OPCODES['ECHO']} {addr0} 000000" ]
 	elif instruction == 'ADD':
 		Validators.MEMORY_ADDRESS( index, args[0] )
 		Validators.MEMORY_ADDRESS( index, args[1] )
 		Validators.MEMORY_ADDRESS( index, args[2] )
 		addr0 : str = to_binary_format( int(args[0][1:]), MAX_ADDRESS_BIT_SIZE )
 		addr1 : str = to_binary_format( int(args[1][1:]), MAX_ADDRESS_BIT_SIZE )
+		addr2 : str = to_binary_format( int(args[2][1:]), MAX_ADDRESS_BIT_SIZE )
 		return [
 			f"{OPCODES['COPY']} {addr0} 000000",
 			f"{OPCODES['COPY']} {addr1} 000001",
 			f"{OPCODES['ADD']} 000000 000000",
-			f"{OPCODES['COPY']} 000010 {args[2][1:]}"
+			f"{OPCODES['COPY']} 000010 {addr2}"
 		]
 	elif instruction == 'SUB':
 		Validators.MEMORY_ADDRESS( index, args[0] )
@@ -164,11 +178,12 @@ def compile_instruction( index : int, line : str ) -> list[str]:
 		Validators.MEMORY_ADDRESS( index, args[2] )
 		addr0 : str = to_binary_format( int(args[0][1:]), MAX_ADDRESS_BIT_SIZE )
 		addr1 : str = to_binary_format( int(args[1][1:]), MAX_ADDRESS_BIT_SIZE )
+		addr2 : str = to_binary_format( int(args[2][1:]), MAX_ADDRESS_BIT_SIZE )
 		return [
 			f"{OPCODES['COPY']} {addr0} 000000",
 			f"{OPCODES['COPY']} {addr1} 000001",
-			f"{OPCODES['SUB']} 000000 000000",
-			f"{OPCODES['COPY']} 000010 {args[2][1:]}"
+			f"{OPCODES['SUB']} 000000 000001",
+			f"{OPCODES['COPY']} 000010 {addr2}"
 		]
 	raise ValueError(f'Instruction {instruction} on line {index} is currently not supported in compiling!')
 
@@ -181,17 +196,59 @@ def compile( content : str ) -> str:
 		machine.extend( translated )
 	return '\n'.join(machine)
 
+class MassiveMemory:
+	'''16-bit memory.'''
+
+	BASE64 : str = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+	MAX_CHARACTERS_PER_MEMORY : int = 200000
+
+	@staticmethod
+	def number_to_massivememory( number : int ) -> str:
+		'''Encode the given number to the 16bit custom base64.'''
+		d3 : int = (number & 0b111111)
+		d2 : int = (number & 0b111111_000000) >> 6
+		d1 : int = (number & 0b111111_000000_000000) >> 12
+		return MassiveMemory.BASE64[d3] + MassiveMemory.BASE64[d2] + MassiveMemory.BASE64[d1]
+
+	@staticmethod
+	def fill_padding( memory : str ) -> str:
+		length : int = MassiveMemory.MAX_CHARACTERS_PER_MEMORY - len(memory)
+		return memory + ( MassiveMemory.BASE64[0] * length )
+
+def memory_code( compiled : str, padding : bool = True ) -> str:
+	memory : str = ''.join([ MassiveMemory.number_to_massivememory( int(line, base=2) ) for line in compiled.replace(' ', '').split('\n') ])
+	if padding:
+		memory = MassiveMemory.fill_padding(memory)
+	return memory
+
 if __name__ == '__main__':
 
 	# print(Validators.NUMBER_VALUE('$0b0000110'))
 	# print(Validators.NUMBER_VALUE('0b0000110'))
 	# print(Validators.NUMBER_VALUE('6'))
 
-	machine = compile('''
+	assembly = compile('''
 	WRITE $8 4		>> write 4 to ADDRESS 8
 	WRITE $9 4		>> write 4 to ADDRESS 9
 	ADD $8 $9 $10	>> add ADDR-8 and ADDR-9 and write to ADDR-10
 	ECHO $10		>> outputs result (8)
 	''')
+	print(assembly)
 
-	print(machine)
+	memory = memory_code( assembly[assembly.find('\n')+1:], padding=False )
+	print(memory[:memory.find('AAAAAAA')])
+
+	# == BINARY CODE ==
+	# 0011 001000 000100
+	# 0011 001001 000100
+	# 0100 001000 000000
+	# 0100 001001 000001
+	# 1011 000000 000000
+	# 0100 000010 001010
+	# 1000 001010 000000
+
+	# == MASSIVE MEMORY ENCODED ==
+	# EIDEJDAIEBJEAALKCEAKI
+
+	with open( 'computer/assembly_memory.txt', 'w' ) as file:
+		file.write( memory )
