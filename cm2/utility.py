@@ -55,8 +55,8 @@ class ImageEditor:
 			raise ValueError('The video frames do not divide evenly into the chunk size. Cannot proceed.')
 		coordinates : list[tuple] = [
 			(xindex * chunk_size, yindex * chunk_size, (xindex+1) * chunk_size, (yindex+1) * chunk_size)
-			for yindex in range( floor(image_size[1] / chunk_size) )
-			for xindex in range( floor(image_size[0] / chunk_size) )
+			for yindex in range( round(image_size[1] / chunk_size) )
+			for xindex in range( round(image_size[0] / chunk_size) )
 		]
 		return [ image.crop( coordinate ) for coordinate in coordinates ]
 

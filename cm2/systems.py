@@ -2,7 +2,7 @@
 import numpy as np
 import os
 
-from PIL import Image
+from PIL import Image, ImageOps
 from .components import ( MassiveMemory, MassMemory )
 from .utility import ( ImageEditor, VideoEditor, number_to_nth_str )
 
@@ -42,7 +42,7 @@ class LED16x16:
 	@staticmethod
 	def encode_video( video_filepath : str, threshold : int = 127, MAX_FRAMES : int = 900, NTH_FRAME : int = 3, debug : bool = True ) -> str:
 		'''Encode the video to the 16x16 grid memory data.'''
-		video_frames : list[Image.Image] = VideoEditor.extract_frames_from_video( video_filepath, MAX_FRAMES=MAX_FRAMES, NTH_FRAME=NTH_FRAME, debug=debug )
+		video_frames : list[Image.Image] = VideoEditor.extract_frames_from_video( video_filepath, MAX_FRAMES=MAX_FRAMES, NTH_FRAME=NTH_FRAME )
 
 		if debug: print(f'Grayscaling and downscaling frames.')
 		frames : list[Image.Image] = [ ImageEditor.to_grayscale_pixelated( image, LED16x16.GRID_SIZE, bgc=0, centered=True ) for image in video_frames ]
@@ -92,19 +92,19 @@ class LED32x32:
 		video_frames : list[Image.Image] = VideoEditor.extract_frames_from_video( video_filepath, MAX_FRAMES=MAX_FRAMES, NTH_FRAME=NTH_FRAME )
 
 		if debug: print(f'Grayscaling and downscaling frames.')
-		frames : list[Image.Image] = [ ImageEditor.to_grayscale_pixelated( image, LED32x32.GRID_SIZE, bgc=0, centered=True ) for image in video_frames ]
+		grayscale_frames : list[Image.Image] = [ ImageEditor.to_grayscale_pixelated( image, LED32x32.GRID_SIZE, bgc=0, centered=True ) for image in video_frames ]
 
 		if debug:
-				print(f'Encoding a total of { len(frames) } frames to debug video.')
-				DEBUG_SIZE : int = 64
-				head, _ = os.path.split( video_filepath )
-				VideoEditor.output_debug_video( frames, head + f'/debug/{DEBUG_SIZE}.avi', size=DEBUG_SIZE, fps=10, threshold=threshold, debug=False )
+			print(f'Encoding a total of { len(grayscale_frames) } frames to debug video.')
+			DEBUG_SIZE : int = 64
+			head, _ = os.path.split( video_filepath )
+			VideoEditor.output_debug_video( video_frames, head + f'/debug/{DEBUG_SIZE}.avi', size=DEBUG_SIZE, fps=10, threshold=threshold, debug=False )
 
 		# split the frames into 4 quads, top-left, top-right, bottom-left, bottom-right and put in memory in that order
 		# the counter circuit will automatically pick the correct quads and the order.
 		frames : list[Image.Image] = []
 
-		chunks_array : list[Image.Image] = [ ImageEditor.split_image_to_quad_chunks( frame, chunk_size=16 ) for frame in frames ]
+		chunks_array : list[Image.Image] = [ ImageEditor.split_image_to_quad_chunks( frame, chunk_size=16 ) for frame in grayscale_frames ]
 		for image_chunks in chunks_array:
 			frames.extend( image_chunks )
 
