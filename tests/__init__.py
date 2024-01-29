@@ -25,7 +25,7 @@ if __name__ == '__main__':
 	VIDEO_FILENAME : str = 'badapple_compact.mp4'
 	# VIDEO_FILENAME : str = 'flashing_1.mp4'
 	video_filepath : str = os.path.join( FILE_DIRECTORY, VIDEO_FILENAME )
-	encoded_video : str = LED32x32.encode_video( video_filepath, NTH_FRAME=3, MAX_FRAMES=1000, debug=True )
+	encoded_video : str = LED32x32.encode_video( video_filepath, NTH_FRAME=9, MAX_FRAMES=1000, debug=True )
 	with open( FILE_DIRECTORY + '/video_memory.txt', 'w') as file:
 		file.write( encoded_video )
 

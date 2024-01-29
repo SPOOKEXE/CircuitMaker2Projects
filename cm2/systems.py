@@ -96,9 +96,9 @@ class LED32x32:
 
 		if debug:
 			print(f'Encoding a total of { len(grayscale_frames) } frames to debug video.')
-			DEBUG_SIZE : int = 64
+			DEBUG_SIZE : int = 16
 			head, _ = os.path.split( video_filepath )
-			VideoEditor.output_debug_video( video_frames, head + f'/debug/{DEBUG_SIZE}.avi', size=DEBUG_SIZE, fps=10, threshold=threshold, debug=False )
+			VideoEditor.output_debug_video( video_frames, head + f'/debug/{DEBUG_SIZE}_{NTH_FRAME}skip.avi', size=DEBUG_SIZE, fps=10, threshold=threshold, debug=False )
 
 		# split the frames into 4 quads, top-left, top-right, bottom-left, bottom-right and put in memory in that order
 		# the counter circuit will automatically pick the correct quads and the order.
