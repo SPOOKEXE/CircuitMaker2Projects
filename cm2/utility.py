@@ -104,3 +104,34 @@ class VideoEditor:
 		debug_frames : list[Image.Image] = [ f.resize((size, size), Image.NEAREST) for f in debug_frames ]
 		debug_frames : list[Image.Image] = [ f.point( lambda p: 255 if p > threshold else 0 ) for f in debug_frames ]
 		VideoEditor.frames_to_video( debug_frames, (size, size), filepath, fps=fps, debug=debug )
+
+def extract_frames_to_directory( filepath : str, directory : str, NTH_FRAME : int = 5, MAX_FRAMES : int = -1 ) -> None:
+	capture = cv2.VideoCapture( filepath )
+	length = int( capture.get(cv2.CAP_PROP_FRAME_COUNT) )
+	print(f'Total video frames: {length}')
+	counter = 0
+	saved_counter = 0
+	os.makedirs(directory, exist_ok=True)
+	while True:
+		success, vframe = capture.read()
+		if success == False:
+			break
+		counter += 1
+		if NTH_FRAME != -1 and counter % NTH_FRAME != 0:
+			continue
+		frame = Image.fromarray( cv2.cvtColor(vframe, cv2.COLOR_BGR2RGB) ).convert('RGB')
+		savepath = os.path.join( directory, f'frame_{counter+1}.jpg' )
+		frame.save(savepath)
+		saved_counter += 1
+		if MAX_FRAMES != -1 and saved_counter < MAX_FRAMES:
+			break
+	capture.release()
+
+if __name__ == '__main__':
+	filepath : str = "C:\\Users\\Declan\\Music\\2024-06-14 22-32-32.mp4"
+	directory : str = "C:\\Users\\Declan\\Music\\frames"
+
+	NTH_FRAME = 5
+	MAX_FRAMES = -1
+
+	extract_frames_to_directory(filepath, directory, NTH_FRAME=NTH_FRAME, MAX_FRAMES=MAX_FRAMES)
