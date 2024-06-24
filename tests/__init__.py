@@ -14,7 +14,6 @@ from cm2 import (
 	MassiveMemory, MassMemory,
 	# systems (save files)
 	LED16x16, LED32x32,
-
 )
 
 sys.path.pop()

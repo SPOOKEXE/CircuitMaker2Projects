@@ -15,5 +15,5 @@ https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z
 '''
 
 from .utility import ( ImageEditor, VideoEditor, number_to_nth_str, split_into_chunks )
-from .systems import ( LED16x16, LED32x32 )
+from .systems import ( LED16x16, LED32x32, LEDEditor )
 from .components import ( MassiveMemory, MassMemory )
