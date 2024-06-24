@@ -37,6 +37,7 @@ def encoded_image( image : Image.Image ) -> list[str]:
 	image = image.convert('L')
 	image.save('layouts/test.PNG')
 	rows : list[list[str]] = []
+	print(image.size)
 	for index, row in enumerate(np.array(image)):
 		columns : list[str] = []
 		for column_n, c in enumerate(row):
@@ -45,7 +46,7 @@ def encoded_image( image : Image.Image ) -> list[str]:
 		rows.append( columns )
 	with open('layouts/bw_chunks.txt', 'w') as file:
 		file.write('\n'.join([str(v) for v in rows]))
-	rows = [ MassiveMemory.number_to_massivememory(int(v, base=2)) for item in rows for v in item ]
+	# rows = [ MassiveMemory.number_to_massivememory(int(v, base=2)) for item in rows for v in item ]
 	with open('layouts/video_memory.txt', 'w') as file:
 		file.write('\n'.join(rows))
 	return rows
