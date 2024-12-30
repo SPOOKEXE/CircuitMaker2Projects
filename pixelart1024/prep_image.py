@@ -64,36 +64,24 @@ for index, item in enumerate(sections):
 	imgcrop.save(f"pixelart1024/crop_{index}.jpg")
 
 # convert to data
-class MassiveMemory:
-	'''16-bit memory.'''
-
-	BASE64 : str = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-	MAX_CHARACTERS_PER_MEMORY : int = 200000
+class HugeMemory:
 
 	@staticmethod
-	def number_to_massivememory(number : int) -> np.ndarray:
-		'''Encode the given number to the 16-bit custom base64.'''
-		d3: int = (number & 0b111111)  # Last 6 bits
-		d2: int = (number & 0b111111_000000) >> 6  # Middle 6 bits
-		d1: int = (number & 0b111111_000000_000000) >> 12  # First 6 bits
-		return MassiveMemory.BASE64[d3] + MassiveMemory.BASE64[d2] + MassiveMemory.BASE64[d1]
-
-	@staticmethod
-	def fill_padding( memory : str ) -> str:
-		'''Pad the memory string to MAX_CHARACTERS_PER_MEMORY length.'''
-		length: int = MassiveMemory.MAX_CHARACTERS_PER_MEMORY - len(memory)
-		return memory + (MassiveMemory.BASE64[0] * length)  # Pad with the first character of BASE64 (usually 'A')
+	def encode(num):
+		chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/"
+		num1 = chars[(num & 0b1111000000000000) >> 12]
+		num2 = chars[(num & 0b0000111111000000) >> 6]
+		num3 = chars[num & 0b0000000000111111]
+		return num1 + num2 + num3
 
 	@staticmethod
 	def encode_to_memory(bin_array: np.ndarray) -> str:
 		'''Convert binary array to memory.'''
 		# Convert binary to integers in a vectorized manner
 		numbers = np.array([int(binarystr, 2) for binarystr in bin_array])
-		# Get massive memory encoding for the array
-		massive_memory = [MassiveMemory.number_to_massivememory(n) for n in numbers]
-		# Pad the massive memory values to required length
-		massive_memory = "".join(massive_memory)
-		return MassiveMemory.fill_padding(massive_memory)
+		# Get massive memory encoding from the array and return it
+		massive_memory = [HugeMemory.encode(n) for n in numbers]
+		return "".join(massive_memory)
 
 def fast_binary_conversion(pixel_array : np.ndarray) -> np.ndarray:
 	# Ensure the array is of integer type
@@ -120,7 +108,7 @@ for index, section in enumerate(sections):
 	bin_array = fast_binary_conversion(pixel_array)
 	print(bin_array[0])
 	# now encode to memory and store it
-	memories.append(MassiveMemory.encode_to_memory(bin_array))
+	memories.append(HugeMemory.encode_to_memory(bin_array))
 
 for index, mem_value in enumerate(memories):
 	with open(f"pixelart1024/memory_{index}.txt", "w") as file:
