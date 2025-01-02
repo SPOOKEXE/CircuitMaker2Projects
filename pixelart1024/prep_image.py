@@ -3,6 +3,8 @@ from math import sqrt
 from PIL import Image
 
 import numpy as np
+import base64
+import zlib
 
 def round_img_to_nearest(img : Image.Image, n : int) -> Image.Image:
 	# Convert image to numpy array
@@ -67,21 +69,30 @@ for index, item in enumerate(sections):
 class HugeMemory:
 
 	@staticmethod
-	def encode(num):
-		chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/"
-		num1 = chars[(num & 0b1111000000000000) >> 12]
-		num2 = chars[(num & 0b0000111111000000) >> 6]
-		num3 = chars[num & 0b0000000000111111]
-		return num1 + num2 + num3
+	def numbers_to_hugememory(numbers : list[str]) -> str:
+		MAX_LENGTH = 2**16
+		MAX_VALUE = (2**16) - 1
 
-	@staticmethod
-	def encode_to_memory(bin_array: np.ndarray) -> str:
-		'''Convert binary array to memory.'''
-		# Convert binary to integers in a vectorized manner
-		numbers = np.array([int(binarystr, 2) for binarystr in bin_array])
-		# Get massive memory encoding from the array and return it
-		massive_memory = [HugeMemory.encode(n) for n in numbers]
-		return "".join(massive_memory)
+		modified_numbers = []
+		for num in numbers:
+			if num > MAX_VALUE:
+				print("a number too big so im gonna set it to 65535 k?")
+				print(num)
+				modified_numbers.append(MAX_VALUE)
+			else:
+				modified_numbers.append(num)
+
+		if len(modified_numbers) > MAX_LENGTH:
+			print("list too long so im gonna truncate it k?")
+			modified_numbers = modified_numbers[:MAX_LENGTH]
+
+		if len(modified_numbers) < MAX_LENGTH:
+			modified_numbers.extend([0] * (MAX_LENGTH - len(modified_numbers)))
+
+		data_to_encode = b''.join(num.to_bytes(2, 'little') for num in modified_numbers)
+		compressed_data = zlib.compress(data_to_encode, level=9)[2:-4]  # strip zlib header/footer
+		encoded_chunk = base64.b64encode(compressed_data).decode()
+		return encoded_chunk
 
 def fast_binary_conversion(pixel_array : np.ndarray) -> np.ndarray:
 	# Ensure the array is of integer type
@@ -92,7 +103,7 @@ def fast_binary_conversion(pixel_array : np.ndarray) -> np.ndarray:
 	bin_array = np.apply_along_axis(lambda row: "".join(row), axis=1, arr=bin_array)
 	return bin_array
 
-memories : list[np.ndarray] = []
+memories : list[str] = []
 for index, section in enumerate(sections):
 	print(f'Section_{index}')
 	mem_section = []
@@ -107,8 +118,9 @@ for index, section in enumerate(sections):
 	# and combine the numbers to form a array of binary of 15 bits length
 	bin_array = fast_binary_conversion(pixel_array)
 	print(bin_array[0])
+	int_array = [int(item, base=2) for item in bin_array]
 	# now encode to memory and store it
-	memories.append(HugeMemory.encode_to_memory(bin_array))
+	memories.append(HugeMemory.numbers_to_hugememory(int_array))
 
 for index, mem_value in enumerate(memories):
 	with open(f"pixelart1024/memory_{index}.txt", "w") as file:
