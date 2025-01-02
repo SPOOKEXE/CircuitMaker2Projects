@@ -98,11 +98,14 @@ def fast_binary_conversion(pixel_array : np.ndarray) -> np.ndarray:
 	# Ensure the array is of integer type
 	pixel_array = pixel_array.astype(np.uint8)
 	# Convert the array to binary with a fixed width of 5 bits
-	bin_array = np.vectorize(lambda x: f"{x:05b}")(pixel_array)
+	bin_array = np.vectorize(lambda x: f"{x:06b}")(pixel_array)
 	# Combine each row into a single 15-bit binary string
-	bin_array = np.apply_along_axis(lambda row: "".join(row), axis=1, arr=bin_array)
+	bin_array = np.apply_along_axis(lambda row: "0" + "".join(row), axis=1, arr=bin_array)
 	return bin_array
 
+# TODO fix below
+
+raw_bits : list[list[str]] = []
 memories : list[str] = []
 for index, section in enumerate(sections):
 	print(f'Section_{index}')
@@ -111,12 +114,11 @@ for index, section in enumerate(sections):
 	pixel_array = np.array(Image.fromarray(section).convert('RGB').getdata())
 	print(f'Got a total pixel count of {len(pixel_array)}.')
 	# divide all pixels by 32 to round to a 2^6 number
-	pixel_array = np.clip(np.round(pixel_array / 32), 0, 32).astype(np.uint8)
-	# shift bits right one so you store the bit 2,4,8,16,32 excluding 1s
-	pixel_array = np.right_shift(pixel_array, 1)
+	pixel_array = np.clip(np.round(pixel_array / 32), 0, 31).astype(np.uint8) # Use 31 for 5-bit max value
 	# now get the bin of the number and pad up to 5 digits total
 	# and combine the numbers to form a array of binary of 15 bits length
 	bin_array = fast_binary_conversion(pixel_array)
+	raw_bits.append(bin_array)
 	print(bin_array[0])
 	int_array = [int(item, base=2) for item in bin_array]
 	# now encode to memory and store it
@@ -125,3 +127,18 @@ for index, section in enumerate(sections):
 for index, mem_value in enumerate(memories):
 	with open(f"pixelart1024/memory_{index}.txt", "w") as file:
 		file.write(mem_value)
+
+for index, array_of_bits in enumerate(raw_bits):
+	print(f'Reconstructing {index}.')
+	pixels = []
+	for binary in array_of_bits:
+		r = int(binary[:5], base=2) # First 5 bits for red
+		g = int(binary[5:10], base=2) # Next 5 bits for green
+		b = int(binary[10:], base=2) # Last 5 bits for blue
+		pixels.append([r, g, b])
+	pixels = np.array(pixels, dtype=np.uint8) * 32
+	pixels = np.left_shift(pixels, 1)
+	pixels = np.clip(pixels, 0, 255)
+	section = pixels.reshape(256, 256, 3)
+	reconstructed_image = Image.fromarray(section)
+	reconstructed_image.save(f"pixelart1024/{index}_reconstructed_section.png")
