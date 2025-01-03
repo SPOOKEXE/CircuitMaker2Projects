@@ -137,7 +137,7 @@ def recreate_image_from_crops(rectangles: list[np.ndarray], rect_width: int = 12
 
 def main() -> None:
 	os.makedirs("pixelart1024/temp", exist_ok=True)
-	img : Image.Image = Image.open('pixelart1024/test.png')
+	img : Image.Image = Image.open('pixelart1024/test.jpg')
 	img = img.convert('RGB')
 	img.thumbnail((256,256), Image.Resampling.BICUBIC)
 	img = round_img_to_nearest(img, 2)
