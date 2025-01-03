@@ -79,8 +79,8 @@ def image_to_huge_memory(index : int, image : Image.Image) -> tuple[str, list]:
 	bin_array : np.ndarray[str] = np.vectorize(lambda x: f"{x:05b}")(pixel_array)
 	bin_array : np.ndarray[str] = np.apply_along_axis(lambda row: "0" + "".join(row), axis=1, arr=bin_array)
 	print(bin_array[:5])
-	with open(f"pixelart1024/raw_{index}.txt", "w") as file:
-		file.write(json.dumps(bin_array.tolist(), indent=4))
+	# with open(f"pixelart1024/temp/raw_{index}.txt", "w") as file:
+	# 	file.write(json.dumps(bin_array.tolist(), indent=4))
 	int_array : list[int] = [int(item, base=2) for item in bin_array]
 	print(int_array[:5])
 	mem : str = HugeMemory.numbers_to_hugememory(int_array)
@@ -136,17 +136,18 @@ def recreate_image_from_crops(rectangles: list[np.ndarray], rect_width: int = 12
 	return reconstructed_image
 
 def main() -> None:
+	os.makedirs("pixelart1024/temp", exist_ok=True)
 	img : Image.Image = Image.open('pixelart1024/test.png')
 	img = img.convert('RGB')
-	img.thumbnail((512,512), Image.Resampling.BICUBIC)
+	img.thumbnail((256,256), Image.Resampling.BICUBIC)
 	img = round_img_to_nearest(img, 2)
 	img.save('pixelart1024/test-out-rounded.jpg')
 
 	# crop the image into 256x256 sections
-	crops : list[Image.Image] = split_image_into_crops(img, rect_width=128, rect_height=128, grid_size_squared=4)
+	crops : list[Image.Image] = split_image_into_crops(img, rect_width=128, rect_height=128, grid_size_squared=2)
 	for index, item in enumerate(crops):
 		crop = Image.fromarray(item).convert('RGB')
-		crop.save(f"pixelart1024/crop_{index}.jpg")
+		crop.save(f"pixelart1024/temp/crop_{index}.jpg")
 
 	# convert crops to pixel binary data
 	int_values : list[list] = []
@@ -154,7 +155,7 @@ def main() -> None:
 		print(f'Convert {index} to bin data.')
 		mem_str, int_array = image_to_huge_memory(index, crop)
 		int_values.append(int_array)
-		with open(f"pixelart1024/memory_{index}.txt", "w") as file:
+		with open(f"pixelart1024/temp/memory_{index}.txt", "w") as file:
 			file.write(mem_str)
 
 	# reconstruct the image back
@@ -162,10 +163,10 @@ def main() -> None:
 	for index, bits in enumerate(int_values):
 		print(f'Convert {index} to bin data.')
 		img = reconstruct_from_memory(index, bits, 128)
-		img.save(f"pixelart1024/{index}_reconstructed_section.jpg")
+		img.save(f"pixelart1024/temp/{index}_reconstructed_section.jpg")
 		sections.append(np.array(img))
 
-	rejoined = recreate_image_from_crops(sections, rect_width=128, rect_height=128, grid_size_squared=4)
+	rejoined = recreate_image_from_crops(sections, rect_width=128, rect_height=128, grid_size_squared=2)
 	rejoined.save("pixelart1024/test-out-reconstructed.jpg")
 
 if __name__ == '__main__':
