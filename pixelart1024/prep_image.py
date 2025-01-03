@@ -94,24 +94,53 @@ def reconstruct_from_memory(index : int, bits : str) -> Image.Image:
 		if index == 0:
 			print(binary)
 		# 16 bits
-		b = int(binary[1:6], base=2) # blue
+		r = int(binary[1:6], base=2) # blue
 		g = int(binary[6:11], base=2) # green
-		r = int(binary[11:], base=2) # red
+		b = int(binary[11:], base=2) # red
 		if index == 0:
-			print("0", binary[1:6], binary[6:11], binary[11:])
+			print(binary[1:6], binary[6:11], binary[11:])
+			print(r, g, b)
+			print(r * 31, g * 31, b * 31)
 		pixels.append([r, g, b])
-	pixels = np.array(pixels, dtype=np.uint8)
-	pixels = np.left_shift(pixels, 1)
+	pixels = np.array(pixels, dtype=np.uint8) * 31
 	pixels = np.clip(pixels, 0, 255)
-	section = pixels.reshape(256, 256, 3) * 31
+	section = pixels.reshape(256, 256, 3)
 	return Image.fromarray(section)
+
+def recreate_image_from_crops(rectangles: list[np.ndarray], rect_width: int = 128, rect_height: int = 128, grid_size_squared: int = 4) -> Image.Image:
+	# Determine the total number of rows and columns
+	rows = cols = int(grid_size_squared)
+
+	# Ensure the number of rectangles matches the expected grid size
+	assert len(rectangles) == rows * cols, "Number of rectangles does not match the grid size."
+
+	# Create a blank array to hold the full image
+	full_image_height = rows * rect_height
+	full_image_width = cols * rect_width
+	channels = rectangles[0].shape[2]  # Assuming all rectangles have the same number of channels
+
+	full_image_array = np.zeros((full_image_height, full_image_width, channels), dtype=np.uint8)
+
+	# Stitch rectangles back into the full image array
+	for i, rect in enumerate(rectangles):
+		row = i // cols
+		col = i % cols
+		full_image_array[
+			row * rect_height: (row + 1) * rect_height,
+			col * rect_width: (col + 1) * rect_width,
+			:
+		] = rect
+
+	# Convert the NumPy array back to a PIL Image
+	reconstructed_image = Image.fromarray(full_image_array)
+	return reconstructed_image
 
 def main() -> None:
 	img : Image.Image = Image.open('pixelart1024/test.png')
 	img = img.convert('RGB')
 	img.thumbnail((1024,1024), Image.Resampling.BICUBIC)
 	img = round_img_to_nearest(img, 2)
-	img.save('pixelart1024/test-out.jpg')
+	img.save('pixelart1024/test-out-rounded.jpg')
 
 	# crop the image into 256x256 sections
 	crops : list[Image.Image] = split_image_into_crops(img, rect_width=256, rect_height=256, grid_size_squared=4)
@@ -129,10 +158,15 @@ def main() -> None:
 			file.write(mem_str)
 
 	# reconstruct the image back
+	sections : np.ndarray = []
 	for index, bits in enumerate(int_values):
 		print(f'Convert {index} to bin data.')
 		img = reconstruct_from_memory(index, bits)
-		img.save(f"pixelart1024/{index}_reconstructed_section.png")
+		img.save(f"pixelart1024/{index}_reconstructed_section.jpg")
+		sections.append(np.array(img))
+
+	rejoined = recreate_image_from_crops(sections, rect_width=256, rect_height=256, grid_size_squared=4)
+	rejoined.save("pixelart1024/test-out-reconstructed.jpg")
 
 if __name__ == '__main__':
 	main()
