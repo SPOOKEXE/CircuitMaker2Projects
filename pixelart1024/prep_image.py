@@ -169,5 +169,11 @@ def main() -> None:
 	rejoined = recreate_image_from_crops(sections, rect_width=128, rect_height=128, grid_size_squared=2)
 	rejoined.save("pixelart1024/test-out-reconstructed.jpg")
 
+def main2() -> None:
+	image = Image.open("pixelart1024/")
+	image_to_huge_memory(0, image)
+
+	pass
+
 if __name__ == '__main__':
 	main()
