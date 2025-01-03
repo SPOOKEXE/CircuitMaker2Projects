@@ -87,7 +87,7 @@ def image_to_huge_memory(index : int, image : Image.Image) -> tuple[str, list]:
 	print(mem[:5])
 	return mem, bin_array
 
-def reconstruct_from_memory(index : int, bits : str) -> Image.Image:
+def reconstruct_from_memory(index : int, bits : str, im_size_sqr : int) -> Image.Image:
 	print(f'Reconstructing {index}.')
 	pixels = []
 	for index, binary in enumerate(bits):
@@ -104,7 +104,7 @@ def reconstruct_from_memory(index : int, bits : str) -> Image.Image:
 		pixels.append([r, g, b])
 	pixels = np.array(pixels, dtype=np.uint8) * 31
 	pixels = np.clip(pixels, 0, 255)
-	section = pixels.reshape(256, 256, 3)
+	section = pixels.reshape(im_size_sqr, im_size_sqr, 3)
 	return Image.fromarray(section)
 
 def recreate_image_from_crops(rectangles: list[np.ndarray], rect_width: int = 128, rect_height: int = 128, grid_size_squared: int = 4) -> Image.Image:
@@ -138,12 +138,12 @@ def recreate_image_from_crops(rectangles: list[np.ndarray], rect_width: int = 12
 def main() -> None:
 	img : Image.Image = Image.open('pixelart1024/test.png')
 	img = img.convert('RGB')
-	img.thumbnail((1024,1024), Image.Resampling.BICUBIC)
+	img.thumbnail((512,512), Image.Resampling.BICUBIC)
 	img = round_img_to_nearest(img, 2)
 	img.save('pixelart1024/test-out-rounded.jpg')
 
 	# crop the image into 256x256 sections
-	crops : list[Image.Image] = split_image_into_crops(img, rect_width=256, rect_height=256, grid_size_squared=4)
+	crops : list[Image.Image] = split_image_into_crops(img, rect_width=128, rect_height=128, grid_size_squared=4)
 	for index, item in enumerate(crops):
 		crop = Image.fromarray(item).convert('RGB')
 		crop.save(f"pixelart1024/crop_{index}.jpg")
@@ -161,11 +161,11 @@ def main() -> None:
 	sections : np.ndarray = []
 	for index, bits in enumerate(int_values):
 		print(f'Convert {index} to bin data.')
-		img = reconstruct_from_memory(index, bits)
+		img = reconstruct_from_memory(index, bits, 128)
 		img.save(f"pixelart1024/{index}_reconstructed_section.jpg")
 		sections.append(np.array(img))
 
-	rejoined = recreate_image_from_crops(sections, rect_width=256, rect_height=256, grid_size_squared=4)
+	rejoined = recreate_image_from_crops(sections, rect_width=128, rect_height=128, grid_size_squared=4)
 	rejoined.save("pixelart1024/test-out-reconstructed.jpg")
 
 if __name__ == '__main__':
