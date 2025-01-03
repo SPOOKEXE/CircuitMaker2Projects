@@ -91,21 +91,20 @@ def reconstruct_from_memory(index : int, bits : str) -> Image.Image:
 	print(f'Reconstructing {index}.')
 	pixels = []
 	for index, binary in enumerate(bits):
-		if index == 1:
+		if index == 0:
 			print(binary)
 		# 16 bits
 		b = int(binary[1:6], base=2) # blue
 		g = int(binary[6:11], base=2) # green
 		r = int(binary[11:], base=2) # red
-		if index == 1:
+		if index == 0:
 			print("0", binary[1:6], binary[6:11], binary[11:])
 		pixels.append([r, g, b])
-	pixels = np.array(pixels, dtype=np.uint8) # * 32
+	pixels = np.array(pixels, dtype=np.uint8)
 	pixels = np.left_shift(pixels, 1)
-	# pixels = np.clip(pixels, 0, 255)
-	section = pixels.reshape(256, 256, 3)
-	reconstructed_image = Image.fromarray(section)
-	reconstructed_image.save(f"pixelart1024/{index}_reconstructed_section.png")
+	pixels = np.clip(pixels, 0, 255)
+	section = pixels.reshape(256, 256, 3) * 31
+	return Image.fromarray(section)
 
 def main() -> None:
 	img : Image.Image = Image.open('pixelart1024/test.png')
@@ -132,7 +131,8 @@ def main() -> None:
 	# reconstruct the image back
 	for index, bits in enumerate(int_values):
 		print(f'Convert {index} to bin data.')
-		reconstruct_from_memory(index, bits)
+		img = reconstruct_from_memory(index, bits)
+		img.save(f"pixelart1024/{index}_reconstructed_section.png")
 
 if __name__ == '__main__':
 	main()
